@@ -1,5 +1,5 @@
 import { FieldValue, Timestamp, type Transaction } from "firebase-admin/firestore";
-import { logger } from "firebase-functions/v2";
+
 import { LIMITS } from "../config";
 import { getSystemSettings } from "./settings";
 import { db } from "./admin";
@@ -235,7 +235,7 @@ export async function processNotification(id: string): Promise<void> {
         sentAt: FieldValue.serverTimestamp(),
         mockSummary: `${messages.length} messages / ${chunks.length} requests (โหมดจำลอง ไม่ได้ส่งจริง)`,
       });
-      logger.info("notification (mock) not sent to LINE", { id, type: claimed.type });
+      console.info("notification (mock) not sent to LINE", { id, type: claimed.type });
       return;
     }
 
@@ -254,14 +254,14 @@ export async function processNotification(id: string): Promise<void> {
       return;
     }
     const exhausted = claimed.attempts >= LIMITS.notificationMaxAttempts;
-    const retry = res.result.retryable && !exhausted;
+    const retry = (res as any).result.retryable && !exhausted;
     await finish({
       status: retry ? "failed" : "dead",
-      lastError: res.result.error ?? "unknown",
-      lastHttpStatus: res.result.status,
+      lastError: (res as any).result.error ?? "unknown",
+      lastHttpStatus: (res as any).result.status,
       nextRetryAt: retry ? Timestamp.fromMillis(Date.now() + backoffMinutes(claimed.attempts) * 60_000) : null,
     });
-    logger.warn("notification send failed", { id, status: res.result.status, retry });
+    console.warn("notification send failed", { id, status: (res as any).result.status, retry });
   } catch (e) {
     const exhausted = claimed.attempts >= LIMITS.notificationMaxAttempts;
     await finish({
@@ -269,7 +269,7 @@ export async function processNotification(id: string): Promise<void> {
       lastError: (e as Error).message.slice(0, 500),
       nextRetryAt: exhausted ? null : Timestamp.fromMillis(Date.now() + backoffMinutes(claimed.attempts) * 60_000),
     });
-    logger.error("notification processing error", { id, error: (e as Error).message });
+    console.error("notification processing error", { id, error: (e as Error).message });
   }
 }
 

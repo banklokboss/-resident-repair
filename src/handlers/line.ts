@@ -53,11 +53,11 @@ async function handleEvent(ev: LineEvent) {
       const bind = text.match(/^(?:ลงทะเบียน|ผูกบัญชี|register|bind)\s*[:：]?\s*([A-Za-z0-9-]{8,9})$/i);
       if (bind) {
         const r = await bindWithCode(userId, bind[1]);
-        if (!r.ok) return reply(ev.replyToken, [textMessage(r.reason === "locked" ? T.bindLockedText : r.reason === "taken" ? "บัญชี LINE นี้ผูกกับผู้ใช้อื่นอยู่แล้ว กรุณาติดต่อนิติบุคคล" : T.bindFailText)]);
-        const msgs = [textMessage(T.bindSuccessText(r.ownerType === "resident" ? r.roomLabel : "เจ้าหน้าที่"))];
-        if (r.ownerType === "resident") {
-          const res = await db.doc(`residents/${r.ownerId}`).get();
-          msgs.push(textMessage(T.personalLinkText(await issueResidentLink(r.ownerId, res.get("roomId")))));
+        if (!r.ok) return reply(ev.replyToken, [textMessage((r as any).reason === "locked" ? T.bindLockedText : (r as any).reason === "taken" ? "บัญชี LINE นี้ผูกกับผู้ใช้อื่นอยู่แล้ว กรุณาติดต่อนิติบุคคล" : T.bindFailText)]);
+        const msgs = [textMessage(T.bindSuccessText((r as any).ownerType === "resident" ? (r as any).roomLabel : "เจ้าหน้าที่"))];
+        if ((r as any).ownerType === "resident") {
+          const res = await db.doc(`residents/${(r as any).ownerId}`).get();
+          msgs.push(textMessage(T.personalLinkText(await issueResidentLink((r as any).ownerId, res.get("roomId")))));
         }
         return reply(ev.replyToken, msgs);
       }

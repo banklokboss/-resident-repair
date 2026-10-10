@@ -1,5 +1,16 @@
 import { z } from "zod";
 
+export function parseInput<T>(schema: z.ZodType<T>, data: unknown): T {
+  try {
+    return schema.parse(data);
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      throw new Error(`ข้อมูลไม่ถูกต้อง: ${(e as any).errors.map((err: any) => err.message).join(", ")}`);
+    }
+    throw e;
+  }
+}
+
 export const REPAIR_STATUSES = ["new", "scheduled", "in_progress", "completed", "cancelled"] as const;
 export type RepairStatus = (typeof REPAIR_STATUSES)[number];
 

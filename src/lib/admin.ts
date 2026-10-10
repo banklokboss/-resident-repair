@@ -1,4 +1,7 @@
-import * as admin from "firebase-admin";
+import { initializeApp, cert } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
+import { getAuth } from "firebase-admin/auth";
+import { getStorage } from "firebase-admin/storage";
 import type { Request, Response, NextFunction } from "express";
 
 import * as fs from "fs";
@@ -8,17 +11,17 @@ let app;
 const keyPath = path.resolve(__dirname, "../../service-account.json");
 if (fs.existsSync(keyPath)) {
   const serviceAccount = JSON.parse(fs.readFileSync(keyPath, "utf8"));
-  app = admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+  app = initializeApp({ credential: cert(serviceAccount) });
 } else if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
   const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-  app = admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+  app = initializeApp({ credential: cert(serviceAccount) });
 } else {
-  app = admin.initializeApp(); // relies on GOOGLE_APPLICATION_CREDENTIALS or emulator
+  app = initializeApp();
 }
 
-export const db = admin.firestore();
-export const adminAuth = admin.auth();
-export const storage = admin.storage();
+export const db = getFirestore(app);
+export const adminAuth = getAuth(app);
+export const storage = getStorage(app);
 
 export interface AuthUser {
   uid: string;

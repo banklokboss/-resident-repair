@@ -67,8 +67,9 @@ export async function bindWithCode(lineUserId: string, rawCode: string): Promise
     return { ok: true, ownerType, ownerId, roomLabel };
   });
 
-  if (result.ok) await attemptsRef.delete().catch(() => undefined);
-  else if (result.reason === "invalid") {
+  if (result.ok) {
+    await attemptsRef.delete().catch(() => undefined);
+  } else if ((result as any).reason === "invalid") {
     await attemptsRef.set({ count: count + 1, windowStart: inWindow ? att.get("windowStart") : Timestamp.now() });
   }
   return result;

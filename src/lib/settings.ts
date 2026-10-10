@@ -21,11 +21,11 @@ export async function getSystemSettings(): Promise<SystemSettings> {
   const data = doc.data() || {};
   
   cachedSettings = {
-    lineChannelAccessToken: data.lineChannelAccessToken || (LINE_CHANNEL_ACCESS_TOKEN.value() ?? ""),
-    lineChannelSecret: data.lineChannelSecret || (LINE_CHANNEL_SECRET.value() ?? ""),
-    lineMockMode: data.lineMockMode ?? (LINE_MOCK_MODE.value() === "true"),
-    lineStaffGroupId: data.lineStaffGroupId || LINE_STAFF_GROUP_ID.value(),
-    appBaseUrl: data.appBaseUrl || APP_BASE_URL.value(),
+    lineChannelAccessToken: data.lineChannelAccessToken || LINE_CHANNEL_ACCESS_TOKEN || "",
+    lineChannelSecret: data.lineChannelSecret || LINE_CHANNEL_SECRET || "",
+    lineMockMode: data.lineMockMode ?? LINE_MOCK_MODE,
+    lineStaffGroupId: data.lineStaffGroupId || LINE_STAFF_GROUP_ID,
+    appBaseUrl: data.appBaseUrl || APP_BASE_URL,
   };
   lastFetch = now;
   return cachedSettings;
