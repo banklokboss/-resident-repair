@@ -75,6 +75,38 @@ export async function bindWithCode(lineUserId: string, rawCode: string): Promise
   return result;
 }
 
+/** Direct binding for LINE OA in a group via ?ID command. */
+export async function bindResidentByRoomLabel(lineUserId: string, roomLabel: string): Promise<BindResult | { ok: false; reason: "not-found" }> {
+  return await db.runTransaction<BindResult | { ok: false; reason: "not-found" }>(async (tx) => {
+    const roomsSnap = await tx.get(db.collection("rooms").where("label", "==", roomLabel).limit(1));
+    if (roomsSnap.empty) return { ok: false, reason: "not-found" };
+    const roomId = roomsSnap.docs[0].id;
+
+    const resSnap = await tx.get(db.collection("residents").where("roomId", "==", roomId).where("active", "==", true).limit(1));
+    if (resSnap.empty) return { ok: false, reason: "not-found" };
+    
+    const ownerId = resSnap.docs[0].id;
+    const ownerType = "resident";
+
+    const link = await tx.get(db.doc(`lineLinks/${lineUserId}`));
+    if (link.exists && link.get("status") !== "replaced" && (link.get("ownerId") !== ownerId || link.get("ownerType") !== ownerType)) {
+      return { ok: false, reason: "taken" };
+    }
+
+    const publicRef = db.doc(`residents/${ownerId}`);
+    const privateRef = db.doc(`residentPrivate/${ownerId}`);
+    const priv = await tx.get(privateRef);
+
+    const oldId = priv.get("lineUserId") as string | undefined;
+    if (oldId && oldId !== lineUserId) tx.delete(db.doc(`lineLinks/${oldId}`));
+    tx.set(db.doc(`lineLinks/${lineUserId}`), { ownerType, ownerId, status: "linked", boundAt: FieldValue.serverTimestamp() });
+    tx.set(privateRef, { lineUserId, lineStatus: "linked", boundAt: FieldValue.serverTimestamp() }, { merge: true });
+    tx.update(publicRef, { lineLinked: true, lineStatus: "linked", lineBoundAt: FieldValue.serverTimestamp() });
+    return { ok: true, ownerType, ownerId, roomLabel };
+  });
+}
+
+
 /** Removes the binding in both directions and invalidates resident web links. */
 export async function unbindOwner(ownerType: OwnerType, ownerId: string): Promise<void> {
   const privateRef = db.doc(ownerType === "resident" ? `residentPrivate/${ownerId}` : `staffPrivate/${ownerId}`);

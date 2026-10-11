@@ -6,7 +6,7 @@ import { adminAuth, assertActive, db } from "../lib/admin";
 import type { AuthenticatedRequest } from "../lib/admin";
 import { sha256 } from "../lib/crypto";
 import { type LineMessage, lineReply, textMessage, verifyLineSignature } from "../lib/lineClient";
-import { bindWithCode, issueBindingCode, issueResidentLink, setLineStatusByUser, unbindOwner, type OwnerType } from "../lib/lineBinding";
+import { bindWithCode, bindResidentByRoomLabel, issueBindingCode, issueResidentLink, setLineStatusByUser, unbindOwner, type OwnerType } from "../lib/lineBinding";
 import * as T from "../lib/messages";
 import { enqueue, isMock, processNotification } from "../lib/notifications";
 
@@ -42,6 +42,27 @@ async function handleEvent(ev: LineEvent) {
     case "message": {
       if (ev.message?.type !== "text" || !ev.message.text) return;
       const text = ev.message.text.trim();
+
+      // --- ?ID binding for groups/personal chats ---
+      if (text.toUpperCase().startsWith("?ID")) {
+        const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+        if (lines.length >= 2) {
+          const roomLabel = lines[1];
+          const sourceId = ev.source?.userId;
+          if (!sourceId) {
+            return reply(ev.replyToken, [textMessage("❌ ไม่สามารถดึงข้อมูลบัญชีของคุณได้ กรุณาเพิ่มเพื่อน (Add Friend) กับ LINE OA ก่อนพิมพ์คำสั่งครับ")]);
+          }
+
+          const r = await bindResidentByRoomLabel(sourceId, roomLabel);
+          if (!r.ok) {
+            return reply(ev.replyToken, [textMessage(r.reason === "not-found" ? `❌ ไม่พบห้อง ${roomLabel} หรือห้องนี้ยังไม่มีลูกบ้านในระบบ` : "❌ ผูกไม่สำเร็จ (อาจผูกกับแชทอื่นอยู่)")]);
+          }
+          
+          const msgs = [textMessage(`✅ ผูกบัญชีของคุณสำหรับรับการแจ้งเตือนห้อง ${roomLabel} เรียบร้อยแล้วครับ!`)];
+          return reply(ev.replyToken, msgs);
+        }
+      }
+
       if (ev.source?.type !== "user") {
         if (/^!?groupid$/i.test(text) && ev.source?.groupId) {
           return reply(ev.replyToken, [textMessage(`Group ID: ${ev.source.groupId}\n(นำไปตั้งค่า LINE_STAFF_GROUP_ID)`)]);
